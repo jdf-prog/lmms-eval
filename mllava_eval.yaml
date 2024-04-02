@@ -1,0 +1,15 @@
+- model: mllava
+  model_args: pretrained=MFuyu/mllava_llava_debug_nlvr2_v5_4096
+  tasks: ai2d
+  batch_size: 1
+  log_samples: true
+  log_samples_suffix: eval_vizwiz_vqa
+  output_path: "./logs/"
+
+- model: mllava
+  model_args: pretrained=MFuyu/mllava_llava_debug_nlvr2_v5_4096
+  tasks: mme
+  batch_size: 1
+  log_samples: true
+  log_samples_suffix: mme
+  output_path: "./logs/"

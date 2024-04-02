@@ -7,6 +7,7 @@ AVAILABLE_MODELS = {
     "gpt4v": "GPT4V",
     "instructblip": "InstructBLIP",
     "minicpm_v": "MiniCPM_V",
+    "mllava": "MLlava",
 }
 
 for model_name, model_class in AVAILABLE_MODELS.items():
