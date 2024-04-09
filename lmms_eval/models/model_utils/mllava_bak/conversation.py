@@ -30,7 +30,6 @@ class Conversation:
     def get_prompt(self):
         messages = self.messages
         if len(messages) > 0 and type(messages[0][1]) is tuple:
-            
             messages = self.messages.copy()
             init_role, init_msg = messages[0].copy()
             init_msg = init_msg[0].replace("<image>", "").strip()
@@ -40,6 +39,7 @@ class Conversation:
                 messages.insert(1, (self.roles[1], "Received."))
             else:
                 messages[0] = (init_role, "<image>" + init_msg)
+
         if self.sep_style == SeparatorStyle.SINGLE:
             ret = self.system + self.sep
             for role, message in messages:
@@ -393,16 +393,6 @@ conv_mllava_v1_mmtag = Conversation(
     version="v1_mmtag",
 )
 
-conv_mllava_v1 = Conversation(
-    system="A chat between a curious human and an artificial intelligence assistant. "
-           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
-    roles=("USER", "ASSISTANT"),
-    version="v1",
-    messages=(),
-    offset=0,
-    sep_style=SeparatorStyle.SINGLE,
-    sep="</s>",
-)
 
 default_conversation = conv_mfuyu_v1
 conv_templates = {

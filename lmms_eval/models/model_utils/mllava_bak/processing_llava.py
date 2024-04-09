@@ -109,7 +109,7 @@ class MLlavaProcessor(ProcessorMixin):
                         if i < num_images:
                             text[i] = t + "<image>"
                     text = "".join(text)
-                    logger.warning(f"Number of <image> tokens: {num_image_tokens} exceeds number of images: {num_images}. Automatically removing extra tokens at the end of the text.")
+                    logger.warning("Number of <image> tokens exceeds number of images. Automatically removing extra tokens at the end of the text.")
                     # raise ValueError("Invalid input text. Number of <image> tokens exceeds number of images.")
                 texts = [text]
             elif isinstance(text, list):
@@ -135,7 +135,7 @@ class MLlavaProcessor(ProcessorMixin):
                             if j < num_images:
                                 t[j] = s + "<image>"
                         t = "".join(t)
-                        logger.warning(f"Number of <image> tokens: {num_image_tokens} exceeds number of images: {num_images}. Automatically removing extra tokens at the end of the text.")
+                        logger.warning("Number of <image> tokens exceeds number of images. Automatically removing extra tokens at the end of the text.")
                         # raise ValueError("Invalid input text. Number of <image> tokens exceeds number of images.")
                     text[i] = t
                 texts = text
@@ -259,9 +259,9 @@ class MLlavaProcessor(ProcessorMixin):
         results = {}
         assert len(model_inputs) == 1, "This method only supports a single input, but get {} inputs".format(len(model_inputs))
         for k in model_inputs[0].keys():
-            if k == "pixel_values":
-                results[k] = [inputs[k] if inputs[k] is not None else None for inputs in model_inputs]
-            else:
+            if model_inputs[0][k] is not None:
                 results[k] = torch.cat([inputs[k] for inputs in model_inputs], dim=0)
+            else:
+                results[k] = None
         return results
         

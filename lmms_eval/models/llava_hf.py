@@ -22,14 +22,12 @@ warnings.filterwarnings("ignore")
 
 eval_logger = logging.getLogger("lmms-eval")
 
-from .model_utils.mllava.utils import chat_mllava
-from .model_utils.mllava import MLlavaProcessor, LlavaForConditionalGeneration
-# from .model_utils.mllava.conversation import conv_mllava_v1_mmtag as default_conv
-from .model_utils.mllava.conversation import conv_mllava_v1 as default_conv
+from transformers import AutoProcessor, LlavaForConditionalGeneration
+from .model_utils.llava_hf.conversation import conv_llava_v1 as default_conv
 
 
 
-@register_model("mllava")
+@register_model("llava_hf")
 class MLlava(lmms):
     """
     MLlava Model
@@ -37,7 +35,7 @@ class MLlava(lmms):
 
     def __init__(
         self,
-        pretrained: str = "MFuyu/llava_bakllava_8192",
+        pretrained: str = "llava-hf/llava-1.5-7b-hf",
         truncation: Optional[bool] = True,
         device: Optional[str] = "cuda",
         dtype: Optional[Union[str, torch.dtype]] = "auto",
@@ -63,7 +61,7 @@ class MLlava(lmms):
             self._device = torch.device(device)
             self.device_map = device_map
             
-        processor = MLlavaProcessor.from_pretrained(pretrained, trust_remote_code=trust_remote_code)
+        processor = AutoProcessor.from_pretrained(pretrained, trust_remote_code=trust_remote_code)
         self.processor = processor
         self._image_processor = processor.image_processor
         self._tokenizer = processor.tokenizer
@@ -265,7 +263,7 @@ class MLlava(lmms):
             task = task[0]
             split = split[0]
             visuals = [doc_to_visual[0](self.task_dict[task][split][ids]) for ids in doc_id]
-            # visuals = self.flatten(visuals)
+            visuals = self.flatten(visuals)
             # we assume all gen kwargs in the batch are the same
             # this is safe to assume because the `grouper` object ensures it.
             gen_kwargs = all_gen_kwargs[0]
