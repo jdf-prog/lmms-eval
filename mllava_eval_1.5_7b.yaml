@@ -1,5 +1,5 @@
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: ai2d
   batch_size: 1
   log_samples: true
@@ -7,7 +7,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: mme
   batch_size: 1
   log_samples: true
@@ -15,7 +15,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: mmmu
   batch_size: 1
   log_samples: true
@@ -24,6 +24,14 @@
 
 - model: mllava
   model_args: pretrained=MFuyu/llava_bakllava_8192
+  tasks: scienceqa
+  batch_size: 1
+  log_samples: true
+  log_samples_suffix: scienceqa
+  output_path: "./logs/"
+  
+- model: mllava
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: gqa
   batch_size: 1
   log_samples: true
@@ -31,7 +39,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: textvqa
   batch_size: 1
   log_samples: true
@@ -39,7 +47,7 @@
   output_path: "./logs/"
 
 # - model: mllava
-#   model_args: pretrained=MFuyu/llava_bakllava_8192
+#   model_args: pretrained=MFuyu/llava_1.5_7b_4096
 #   tasks: llava_in_the_wild
 #   batch_size: 1
 #   log_samples: true
@@ -47,7 +55,7 @@
 #   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: vizwiz_vqa
   batch_size: 1
   log_samples: true
@@ -55,7 +63,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: ok_vqa
   batch_size: 1
   log_samples: true
@@ -63,7 +71,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: chart_vqa
   batch_size: 1
   log_samples: true
@@ -71,7 +79,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: hallusion_bench
   batch_size: 1
   log_samples: true
@@ -80,7 +88,7 @@
 
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: docvqa
   batch_size: 1
   log_samples: true
@@ -88,7 +96,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: ocrbench
   batch_size: 1
   log_samples: true
@@ -96,7 +104,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: scienceqa
   batch_size: 1
   log_samples: true
@@ -104,7 +112,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: infovqa
   batch_size: 1
   log_samples: true
@@ -112,7 +120,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: iconqa
   batch_size: 1
   log_samples: true
@@ -120,7 +128,7 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: mmbench
   batch_size: 1
   log_samples: true
@@ -128,19 +136,10 @@
   output_path: "./logs/"
 
 - model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
+  model_args: pretrained=MFuyu/llava_1.5_7b_4096
   tasks: vqav2
   batch_size: 1
   log_samples: true
   log_samples_suffix: vqav2
   output_path: "./logs/"
-
-- model: mllava
-  model_args: pretrained=MFuyu/llava_bakllava_8192
-  tasks: scienceqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: scienceqa
-  output_path: "./logs/"
-
 

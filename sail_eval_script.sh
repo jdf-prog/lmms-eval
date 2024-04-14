@@ -1,0 +1,1 @@
+accelerate launch --num_processes=4 -m lmms_eval --config mllava_eval.yaml 
