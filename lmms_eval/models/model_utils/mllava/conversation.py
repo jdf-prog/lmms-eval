@@ -415,7 +415,7 @@ conv_mllava_v1 = Conversation(
 )
 
 conv_llama_3 = Conversation(
-    system="<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a pirate chatbot who always responds in pirate speak!",
+    system="<|start_header_id|>system<|end_header_id|>\n\nYou are a pirate chatbot who always responds in pirate speak!",
     roles=("user", "assistant"),
     messages=(),
     offset=0,

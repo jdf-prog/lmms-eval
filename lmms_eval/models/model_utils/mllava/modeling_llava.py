@@ -430,6 +430,8 @@ class LlavaForConditionalGeneration(LlavaPreTrainedModel):
             if pixel_values is not None and input_ids.shape[1] != 1:
                 if isinstance(pixel_values, list):
                     pixel_values = torch.cat([x for x in pixel_values if x is not None], dim=0)
+                if pixel_values.dtype != self.vision_tower.dtype:
+                    pixel_values = pixel_values.type(self.vision_tower.dtype)
                 image_outputs = self.vision_tower(pixel_values, output_hidden_states=True)
                 # this is not memory efficient at all (output_hidden_states=True) will save all the hidden stated.
                 selected_image_feature = image_outputs.hidden_states[vision_feature_layer]
