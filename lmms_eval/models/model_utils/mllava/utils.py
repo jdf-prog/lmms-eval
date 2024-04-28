@@ -40,8 +40,14 @@ def chat_mllava(
             message["role"] = message["role"].upper()
             assert message["role"] in conv.roles
             conv.append_message(message["role"], message["text"])
+        terminators = [
+            processor.tokenizer.eos_token_id,
+            processor.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+        ]
     else:
         history = []
+        terminators = None
+    kwargs["eos_token_id"] = terminators
     conv.append_message(conv.roles[0], text)
     conv.append_message(conv.roles[1], "")
     

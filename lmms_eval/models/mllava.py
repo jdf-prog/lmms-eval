@@ -25,7 +25,7 @@ eval_logger = logging.getLogger("lmms-eval")
 from .model_utils.mllava.utils import chat_mllava
 from .model_utils.mllava import MLlavaProcessor, LlavaForConditionalGeneration
 # from .model_utils.mllava.conversation import conv_mllava_v1_mmtag as default_conv
-from .model_utils.mllava.conversation import conv_mllava_v1 as default_conv
+from .model_utils.mllava.conversation import conv_mllava_v1 as default_conv, conv_templates
 
 
 
@@ -118,6 +118,18 @@ class MLlava(lmms):
             self.model.to(self._device)
             self._rank = 0
             self._world_size = 1
+        
+        
+        if "llama-3" in self.model.language_model.name_or_path.lower():
+            self.conv_template = conv_templates['llama_3']
+            self.terminators = [
+                processor.tokenizer.eos_token_id,
+                processor.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+            ]
+        else:
+            self.conv_template = default_conv
+            self.terminators = None
+        self.conv_template
 
     @property
     def config(self):
@@ -295,9 +307,12 @@ class MLlava(lmms):
 
             question_input = []
 
-            for context in contexts:
+            for i, context in enumerate(contexts):
                 question = context
-                conv = default_conv.copy()
+                num_images = len(visuals[i])
+                if question.count("<image>") < num_images:
+                    question = "<image> " * (num_images - question.count("<image>")) + question
+                conv = self.conv_template.copy()
                 conv.append_message(conv.roles[0], question)
                 conv.append_message(conv.roles[1], None)
                 prompt_question = conv.get_prompt()
@@ -314,8 +329,9 @@ class MLlava(lmms):
                 gen_kwargs["top_p"] = None
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
-
-            inputs = self.processor(images=images, text=question_input, return_tensors="pt", truncation=True, padding="longest")
+            
+            assert len(question_input) == 1, "Batch size should be 1"
+            inputs = self.processor(images=images, text=question_input, return_tensors="pt", truncation=True)
             inputs = {k: v.to(self.device) if v is not None else v for k, v in inputs.items()}
             try:
                 cont = self.model.generate(
@@ -326,6 +342,7 @@ class MLlava(lmms):
                     num_beams=gen_kwargs["num_beams"],
                     max_new_tokens=gen_kwargs["max_new_tokens"],
                     use_cache=self.use_cache,
+                    eos_token_id=self.terminators,
                 )
                 pure_output_ids = cont[:, inputs["input_ids"].shape[1] :]
                 text_outputs = self.tokenizer.batch_decode(pure_output_ids, skip_special_tokens=True)
