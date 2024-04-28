@@ -4,6 +4,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 
 import logging
 import copy
+import regex as re
 from tqdm import tqdm
 from datetime import timedelta
 
@@ -205,6 +206,7 @@ class MLlava(lmms):
             else:
                 continuation = doc_to_target(self.task_dict[task][split][doc_id])
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
+            assert len(visuals) == 1, "Batch size should be 1"
             visuals = self.flatten(visuals)
             if visuals:
                 images = visuals
@@ -213,10 +215,15 @@ class MLlava(lmms):
 
             prompts_input = contexts[0]
 
-            conv = default_conv.copy()
+            conv = self.conv_template.copy()
+            if prompts_input.count("<image>") < len(visuals):
+                prompts_input = "<image> " * (len(visuals) - prompts_input.count("<image>")) + prompts_input
             conv.append_message(conv.roles[0], prompts_input)
             conv.append_message(conv.roles[1], None)
             prompt = conv.get_prompt()
+            if prompt.count("<image>") < len(visuals):
+                prompt = "<image> " * (len(visuals) - prompt.count("<image>")) + "\n" + prompt
+            
             inputs_without_cont = self.processor(images=images, text=prompt, return_tensors="pt", truncation=True, padding="longest")
             # Add the answer of the second role
             
@@ -311,7 +318,7 @@ class MLlava(lmms):
                 question = context
                 num_images = len(visuals[i])
                 if question.count("<image>") < num_images:
-                    question = "<image> " * (num_images - question.count("<image>")) + question
+                    question = "<image> " * (num_images - question.count("<image>")) + "\n" + question
                 conv = self.conv_template.copy()
                 conv.append_message(conv.roles[0], question)
                 conv.append_message(conv.roles[1], None)
@@ -330,6 +337,8 @@ class MLlava(lmms):
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
             
+            # print(question_input)
+            # print(images)
             assert len(question_input) == 1, "Batch size should be 1"
             inputs = self.processor(images=images, text=question_input, return_tensors="pt", truncation=True)
             inputs = {k: v.to(self.device) if v is not None else v for k, v in inputs.items()}
@@ -363,6 +372,9 @@ class MLlava(lmms):
             #             # ignore '' separator,
             #             # for seq2seq case where self.tok_decode(self.eot_token_id) = ''
             #             text_outputs = text_outputs.split(term)[0]
+            # change "A." to "A"
+            if re.match(r"[A-Z]\.", text_outputs[0].strip()):
+                text_outputs[0] = text_outputs[0].strip()[:-1]
             res.extend(text_outputs)
             self.cache_hook.add_partial("generate_until", (context, gen_kwargs), text_outputs)
             pbar.update(1)

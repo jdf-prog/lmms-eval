@@ -423,6 +423,16 @@ conv_llama_3 = Conversation(
     sep="<|eot_id|>",
 )
 
+# conv_llama_3 = Conversation(
+#     system="<|start_header_id|>system<|end_header_id|>\n\nA chat between a curious human and an artificial intelligence assistant. "
+#            "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+#     roles=("user", "assistant"),
+#     messages=(),
+#     offset=0,
+#     sep_style=SeparatorStyle.LLAMA_3,
+#     sep="<|eot_id|>",
+# )
+
 default_conversation = conv_mfuyu_v1
 conv_templates = {
     "default": conv_vicuna_v0,
