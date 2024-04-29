@@ -97,10 +97,10 @@
 
 - model: mllava
   model_args: pretrained=MFuyu/llava_siglip_llama3_8b_finetune_8192
-  tasks: scienceqa
+  tasks: scienceqa_img
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_scienceqa
+  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_scienceqa_img
   output_path: "./logs/"
 
 - model: mllava
