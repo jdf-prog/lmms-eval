@@ -12,5 +12,5 @@ accelerate launch --num_processes=4 -m lmms_eval --config mllava_eval_clip_llama
 
 
 accelerate launch --num_processes=4 -m lmms_eval --config mllava_eval_bakllava_1.5_7b_v2.yaml --output_path ./logs/bakllava_1.5_7b_v2
-accelerate launch --num_processes=4 -m lmms_eval --config mllava_eval_siglip_llama3.yaml --output_path ./logs/siglip_llama3
-accelerate launch --num_processes=4 -m lmms_eval --config mllava_eval_clip_llama3.yaml --output_path ./logs/clip_llama3
+accelerate launch --num_processes=2 -m lmms_eval --config mllava_eval_siglip_llama3.yaml --output_path ./logs/siglip_llama3
+accelerate launch --num_processes=2 -m lmms_eval --config mllava_eval_clip_llama3.yaml --output_path ./logs/clip_llama3

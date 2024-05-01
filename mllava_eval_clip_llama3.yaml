@@ -1,161 +1,185 @@
 - model: mllava
   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: ai2d
+  tasks: mathvista
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_ai2d
-  output_path: "./logs/"
-
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: mme
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_mme
-  output_path: "./logs/"
-
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: mmmu
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_mmmu
-  output_path: "./logs/"
-
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: scienceqa_img
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_scienceqa_img
-  output_path: "./logs/"
-  
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: gqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_gqa
-  output_path: "./logs/"
-
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: textvqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_textvqa
+  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_mathvista
   output_path: "./logs/"
 
 # - model: mllava
 #   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-#   tasks: llava_in_the_wild
+#   tasks: chartqa
 #   batch_size: 1
 #   log_samples: true
-#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_llava_in_the_wild
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_chartqa
 #   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: vizwiz_vqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_vizwiz_vqa
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: multidocvqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_multidocvqa
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: ok_vqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_ok_vqa
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: ai2d
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_ai2d
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: chart_vqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_chart_vqa
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: mme
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_mme
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: hallusion_bench
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_hallusion_bench
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: mmmu
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_mmmu
+#   output_path: "./logs/"
+
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: scienceqa_img
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_scienceqa_img
+#   output_path: "./logs/"
+  
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: gqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_gqa
+#   output_path: "./logs/"
+
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: textvqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_textvqa
+#   output_path: "./logs/"
+
+# # - model: mllava
+# #   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+# #   tasks: llava_in_the_wild
+# #   batch_size: 1
+# #   log_samples: true
+# #   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_llava_in_the_wild
+# #   output_path: "./logs/"
+
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: vizwiz_vqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_vizwiz_vqa
+#   output_path: "./logs/"
+
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: ok_vqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_ok_vqa
+#   output_path: "./logs/"
+
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: chartqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_chartqa
+#   output_path: "./logs/"
+
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: hallusion_bench
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_hallusion_bench
+#   output_path: "./logs/"
 
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: docvqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_docvqa
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: docvqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_docvqa
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: ocrbench
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_ocrbench
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: ocrbench
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_ocrbench
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: scienceqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_scienceqa
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: scienceqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_scienceqa
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: infovqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_infocqa
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: infovqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_infocqa
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: iconqa
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_iconqa
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: iconqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_iconqa
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: mmbench
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_mmbench
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: mmbench
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_mmbench
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: pope
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_pope
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: pope
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_pope
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: 
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_pope
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: 
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_pope
+#   output_path: "./logs/"
 
-- model: mllava
-  model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
-  tasks: vqav2
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: llava_clip_llama3_8b_finetune_8192_vqav2
-  output_path: "./logs/"
+# - model: mllava
+#   model_args: pretrained=MFuyu/llava_clip_llama3_8b_finetune_8192
+#   tasks: vqav2
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_clip_llama3_8b_finetune_8192_vqav2
+#   output_path: "./logs/"
 
