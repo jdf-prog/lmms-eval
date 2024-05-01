@@ -93,7 +93,6 @@ class Yi_VL(lmms):
         model_path = os.path.expanduser(model_path)
         key_info["model_path"] = model_path
         get_model_name_from_path(model_path)
-        print(f"Model path: {model_path}")
         self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained)
         self._config = self._model.config
         self.model.eval()
@@ -221,7 +220,7 @@ class Yi_VL(lmms):
                             )
                         visuals[i] = self._image_processor.preprocess(visuals[i], return_tensors="pt")[
                             "pixel_values"
-                        ][0].to(dtype=torch.float16).cuda()
+                        ][0].to(dtype=torch.bfloat16).cuda()
                     image_tensor = visuals
                 else:
                     if getattr(self.model.config, "image_aspect_ratio", None) == "pad":
@@ -230,7 +229,7 @@ class Yi_VL(lmms):
                         )
                     visuals = self._image_processor.preprocess(visuals, return_tensors="pt")[
                         "pixel_values"
-                    ][0].unsqueeze(0).to(dtype=torch.float16).cuda()
+                    ][0].unsqueeze(0).to(dtype=torch.bfloat16).cuda()
                     image_tensor = visuals
             else:
                 image = None
@@ -338,8 +337,8 @@ class Yi_VL(lmms):
                             )
                         visuals[i] = self._image_processor.preprocess(visuals[i], return_tensors="pt")[
                             "pixel_values"
-                        ][0].to(dtype=torch.float16).cuda()
-                    image_tensor = visuals
+                        ][0].to(dtype=torch.bfloat16).cuda()
+                    image_tensor = torch.stack(visuals, dim=0)
                 else:
                     if getattr(self.model.config, "image_aspect_ratio", None) == "pad":
                         visuals = expand2square(
@@ -347,7 +346,7 @@ class Yi_VL(lmms):
                         )
                     visuals = self._image_processor.preprocess(visuals, return_tensors="pt")[
                         "pixel_values"
-                    ][0].unsqueeze(0).to(dtype=torch.float16).cuda()
+                    ][0].unsqueeze(0).to(dtype=torch.bfloat16).cuda()
                     image_tensor = visuals
             else:
                 image_tensor = None
@@ -413,7 +412,7 @@ class Yi_VL(lmms):
                     attention_mask=attention_masks,
                     pad_token_id=pad_token_ids,
                     images=image_tensor,
-                    image_sizes=gen_kwargs["image_sizes"],
+                    # image_sizes=gen_kwargs["image_sizes"],
                     do_sample=True if gen_kwargs["temperature"] > 0 else False,
                     temperature=gen_kwargs["temperature"],
                     stopping_criteria=[stopping_criteria],
@@ -422,14 +421,13 @@ class Yi_VL(lmms):
                     max_new_tokens=gen_kwargs["max_new_tokens"],
                     use_cache=self.use_cache,
                 )
-                text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)
+                input_token_len = input_ids.shape[1]
+                text_outputs = self.tokenizer.batch_decode(cont[:, input_token_len:], skip_special_tokens=True)
             except Exception as e:
                 eval_logger.error(f"Error {e} in generating")
                 cont = ""
                 text_outputs = [""]
-                
-            print(text_outputs)
-            exit(0)
+                raise e
 
             # cont_toks_list = cont.tolist()
             # for cont_toks, context in zip(cont_toks_list, contexts):
