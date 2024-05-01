@@ -3,7 +3,7 @@
   tasks: ok_vqa
   batch_size: 1
   log_samples: true
-  log_samples_suffix: yi_vl_6b_vqav2
+  log_samples_suffix: yi_vl_6b_vqav2_ok_vqa
   output_path: "./logs/"
 
 
