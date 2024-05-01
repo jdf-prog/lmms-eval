@@ -84,7 +84,7 @@ class Yi_VL(lmms):
             self.device_map = f"cuda:{accelerator.local_process_index}"
         else:
             self._device = torch.device(device)
-            self.device_map = device_map
+            self.device_map = device_map or "auto"
 
         if not os.path.exists(pretrained):
             model_path = snapshot_download(pretrained)
