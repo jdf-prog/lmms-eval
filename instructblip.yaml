@@ -1,0 +1,16 @@
+- model: instructblip
+  model_args: pretrained=Salesforce/instructblip-vicuna-7b
+  tasks: ok_vqa
+  batch_size: 1
+  log_samples: true
+  log_samples_suffix: instructblip_ok_vqa
+  output_path: "./logs/"
+  
+- model: instructblip
+  model_args: pretrained=Salesforce/instructblip-vicuna-7b
+  tasks: vqav2
+  batch_size: 1
+  log_samples: true
+  log_samples_suffix: instructblip_vqav2
+  output_path: "./logs/"
+

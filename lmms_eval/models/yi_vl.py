@@ -1,10 +1,9 @@
 import torch
 
 torch.backends.cuda.matmul.allow_tf32 = True
-
+import os
 import logging
 import copy
-import regex as re
 from tqdm import tqdm
 from datetime import timedelta
 
@@ -23,22 +22,44 @@ warnings.filterwarnings("ignore")
 
 eval_logger = logging.getLogger("lmms-eval")
 
-from .model_utils.mllava.utils import chat_mllava
-from .model_utils.mllava import MLlavaProcessor, LlavaForConditionalGeneration
-# from .model_utils.mllava.conversation import conv_mllava_v1_mmtag as default_conv
-from .model_utils.mllava.conversation import conv_mllava_v1 as default_conv, conv_templates
+import torch
+from .model_utils.yi_vl.conversation import conv_templates
+from .model_utils.yi_vl.mm_utils import (
+    KeywordsStoppingCriteria,
+    expand2square,
+    get_model_name_from_path,
+    load_pretrained_model,
+    tokenizer_image_token,
+)
+from .model_utils.yi_vl.model.constants import DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX, key_info
+from PIL import Image
+
+from transformers.integrations.deepspeed import (
+    is_deepspeed_zero3_enabled,
+    set_hf_deepspeed_config,
+    unset_hf_deepspeed_config,
+)
+from huggingface_hub import snapshot_download
 
 
-
-@register_model("mllava")
-class MLlava(lmms):
+def disable_torch_init():
     """
-    MLlava Model
+    Disable the redundant torch default initialization to accelerate model creation.
+    """
+    import torch
+
+    setattr(torch.nn.Linear, "reset_parameters", lambda self: None)
+    setattr(torch.nn.LayerNorm, "reset_parameters", lambda self: None)
+    
+@register_model("yi_vl")
+class Yi_VL(lmms):
+    """
+    Llava Model
     """
 
     def __init__(
         self,
-        pretrained: str = "MFuyu/llava_bakllava_8192",
+        pretrained: str = "01-ai/Yi-VL-6B",
         truncation: Optional[bool] = True,
         device: Optional[str] = "cuda",
         dtype: Optional[Union[str, torch.dtype]] = "auto",
@@ -47,6 +68,7 @@ class MLlava(lmms):
         revision=None,
         use_flash_attention_2=True,
         device_map="",
+        conv_template="mm_default",
         use_cache=True,
         truncate_context=False,  # whether to truncate the context in generation, set it False for LLaVA-1.6
         **kwargs,
@@ -62,29 +84,22 @@ class MLlava(lmms):
             self.device_map = f"cuda:{accelerator.local_process_index}"
         else:
             self._device = torch.device(device)
-            self.device_map = device_map
-            
-        processor = MLlavaProcessor.from_pretrained(pretrained, trust_remote_code=trust_remote_code)
-        self.processor = processor
-        self._image_processor = processor.image_processor
-        self._tokenizer = processor.tokenizer
-        
-        if use_flash_attention_2:
-            attn_implementation = "flash_attention_2"
-        else:
-            attn_implementation = None
-        
-        self._model = LlavaForConditionalGeneration.from_pretrained(
-            pretrained, device_map=self._device, attn_implementation=attn_implementation, 
-            trust_remote_code=trust_remote_code, revision=revision, torch_dtype=torch.bfloat16).eval()
-        
-        self._max_length = int(pretrained.split("_")[-1])
+            self.device_map = device_map or "auto"
 
+        if not os.path.exists(pretrained):
+            model_path = snapshot_download(pretrained)
+        else:
+            model_path = pretrained
+        model_path = os.path.expanduser(model_path)
+        key_info["model_path"] = model_path
+        get_model_name_from_path(model_path)
+        self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, device_map=self.device_map)
         self._config = self._model.config
         self.model.eval()
         self.model.tie_weights()
         self.truncation = truncation
         self.batch_size_per_gpu = int(batch_size)
+        self.conv_template = conv_template
         self.use_cache = use_cache
         self.truncate_context = truncate_context
         # assert self.batch_size_per_gpu == 1, "Llava currently does not support batched generation. See https://github.com/haotian-liu/LLaVA/issues/754. HF Llava also has this issue."
@@ -119,18 +134,6 @@ class MLlava(lmms):
             self.model.to(self._device)
             self._rank = 0
             self._world_size = 1
-        
-        
-        if "llama-3" in self.model.language_model.name_or_path.lower():
-            self.conv_template = conv_templates['llama_3']
-            self.terminators = [
-                processor.tokenizer.eos_token_id,
-                processor.tokenizer.convert_tokens_to_ids("<|eot_id|>")
-            ]
-        else:
-            self.conv_template = default_conv
-            self.terminators = None
-        self.conv_template
 
     @property
     def config(self):
@@ -206,46 +209,66 @@ class MLlava(lmms):
             else:
                 continuation = doc_to_target(self.task_dict[task][split][doc_id])
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            assert len(visuals) == 1, "Batch size should be 1"
             visuals = self.flatten(visuals)
+            
             if visuals:
-                images = visuals
+                if isinstance(visuals, list):
+                    for i in range(len(visuals)):
+                        if getattr(self.model.config, "image_aspect_ratio", None) == "pad":
+                            visuals[i] = expand2square(
+                                visuals[i], tuple(int(x * 255) for x in self._image_processor.image_mean)
+                            )
+                        visuals[i] = self._image_processor.preprocess(visuals[i], return_tensors="pt")[
+                            "pixel_values"
+                        ][0].to(dtype=torch.bfloat16).cuda()
+                    image_tensor = visuals
+                else:
+                    if getattr(self.model.config, "image_aspect_ratio", None) == "pad":
+                        visuals = expand2square(
+                            visuals, tuple(int(x * 255) for x in self._image_processor.image_mean)
+                        )
+                    visuals = self._image_processor.preprocess(visuals, return_tensors="pt")[
+                        "pixel_values"
+                    ][0].unsqueeze(0).to(dtype=torch.bfloat16).cuda()
+                    image_tensor = visuals
             else:
-                images = None
+                image = None
 
             prompts_input = contexts[0]
 
-            conv = self.conv_template.copy()
-            if prompts_input.count("<image>") < len(visuals):
-                prompts_input = "<image> " * (len(visuals) - prompts_input.count("<image>")) + prompts_input
+            if image is not None and len(image) != 0 and DEFAULT_IMAGE_TOKEN not in prompts_input:
+                """
+                Three senarios:
+                1. No image, and there for, no image token should be added.
+                2. image token is already specified in the context, so we don't need to add it.
+                3. image token is not specified in the context and there is image inputs, so we need to add it. In this case, we add the image token at the beginning of the context and add a new line.
+                """
+                image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
+                image_tokens = " ".join(image_tokens)
+                prompts_input = image_tokens + "\n" + contexts[0]
+
+            conv = conv_templates[self.conv_template].copy()
             conv.append_message(conv.roles[0], prompts_input)
             conv.append_message(conv.roles[1], None)
             prompt = conv.get_prompt()
-            if prompt.count("<image>") < len(visuals):
-                prompt = "<image> " * (len(visuals) - prompt.count("<image>")) + "\n" + prompt
-            
-            inputs_without_cont = self.processor(images=images, text=prompt, return_tensors="pt", truncation=True, padding="longest")
+            pad_token_id = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
+            contxt_id = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             # Add the answer of the second role
-            
             conv.messages[1][1] = continuation
+
             prompt = conv.get_prompt()
-            inputs_with_cont = self.processor(images=images, text=prompt, return_tensors="pt", truncation=True, padding="longest")
-            
-            labels = inputs_with_cont["input_ids"].clone()
-            input_ids = inputs_with_cont["input_ids"]
-            input_ids_without_cont = inputs_without_cont["input_ids"]
+            input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
+            labels = input_ids.clone()
             # Context part no need to calculate for loss
-            labels[0, : inputs_without_cont["input_ids"].shape[1]] = -100
-            
+            labels[0, : contxt_id.shape[1]] = -100
             with torch.inference_mode():
-                outputs = self.model(**inputs_with_cont, labels=labels, use_cache=True)
+                outputs = self.model(input_ids=input_ids, labels=labels, images=image, use_cache=True)
             loss = outputs["loss"]
             # loss = torch.exp(loss)
             logits = outputs["logits"]
             greedy_tokens = logits.argmax(dim=-1)
-            
-            cont_toks = input_ids[:, input_ids_without_cont.shape[1] :]  # [1, seq]
-            greedy_tokens = greedy_tokens[:, input_ids_without_cont.shape[1] : input_ids.shape[1]]  # [1, seq]
+            cont_toks = input_ids[:, contxt_id.shape[1] :]  # [1, seq]
+            greedy_tokens = greedy_tokens[:, contxt_id.shape[1] : input_ids.shape[1]]  # [1, seq]
             max_equal = (greedy_tokens == cont_toks).all()
             res.append((float(loss.item()), bool(max_equal)))
             pbar.update(1)
@@ -284,7 +307,7 @@ class MLlava(lmms):
             task = task[0]
             split = split[0]
             visuals = [doc_to_visual[0](self.task_dict[task][split][ids]) for ids in doc_id]
-            # visuals = self.flatten(visuals)
+            visuals = self.flatten(visuals)
             # we assume all gen kwargs in the batch are the same
             # this is safe to assume because the `grouper` object ensures it.
             gen_kwargs = all_gen_kwargs[0]
@@ -306,28 +329,67 @@ class MLlava(lmms):
                 eval_logger.info(f"Setting image aspect ratio: {self._config.image_aspect_ratio}")
             # encode, pad, and truncate contexts for this batch
             if visuals:
-                images = visuals
+                if isinstance(visuals, list):
+                    for i in range(len(visuals)):
+                        if getattr(self.model.config, "image_aspect_ratio", None) == "pad":
+                            visuals[i] = expand2square(
+                                visuals[i], tuple(int(x * 255) for x in self._image_processor.image_mean)
+                            )
+                        visuals[i] = self._image_processor.preprocess(visuals[i], return_tensors="pt")[
+                            "pixel_values"
+                        ][0].to(dtype=torch.bfloat16).cuda()
+                    image_tensor = torch.stack(visuals, dim=0)
+                else:
+                    if getattr(self.model.config, "image_aspect_ratio", None) == "pad":
+                        visuals = expand2square(
+                            visuals, tuple(int(x * 255) for x in self._image_processor.image_mean)
+                        )
+                    visuals = self._image_processor.preprocess(visuals, return_tensors="pt")[
+                        "pixel_values"
+                    ][0].unsqueeze(0).to(dtype=torch.bfloat16).cuda()
+                    image_tensor = visuals
             else:
-                images = None
+                image_tensor = None
 
             # prompts_input = contexts[0]
 
             question_input = []
 
-            for i, context in enumerate(contexts):
-                question = context
-                num_images = len(visuals[i])
-                if question.count("<image>") < num_images:
-                    question = "<image> " * (num_images - question.count("<image>")) + "\n" + question
-                conv = self.conv_template.copy()
+            for visual, context in zip(visuals, contexts):
+                if image_tensor is not None and len(image_tensor) != 0 and DEFAULT_IMAGE_TOKEN not in context:
+                    """
+                    Three senarios:
+                    1. No image, and there for, no image token should be added.
+                    2. image token is already specified in the context, so we don't need to add it.
+                    3. image token is not specified in the context and there is image inputs, so we need to add it. In this case, we add the image token at the beginning of the context and add a new line.
+                    """
+                    image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visual) if isinstance(visual, list) else [DEFAULT_IMAGE_TOKEN]
+                    image_tokens = " ".join(image_tokens)
+                    question = image_tokens + "\n" + context
+                else:
+                    question = context
+
+                conv = conv_templates[self.conv_template].copy()
                 conv.append_message(conv.roles[0], question)
                 conv.append_message(conv.roles[1], None)
                 prompt_question = conv.get_prompt()
                 question_input.append(prompt_question)
 
+            # The above for loop has bugs. When there is no visuals, e.g. pure text,
+            # there will be no for loop execute resulting in an empty question_input (because no visuals)
+            # Scenario 1 won't even be execute
+            if len(visuals) == 0:
+                for context in contexts:
+                    question = context
+                    conv = conv_templates[self.conv_template].copy()
+                    conv.append_message(conv.roles[0], question)
+                    conv.append_message(conv.roles[1], None)
+                    prompt_question = conv.get_prompt()
+                    question_input.append(prompt_question)
+
             # input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             # preconfigure gen_kwargs with defaults
-            # gen_kwargs["image_sizes"] = [visuals[idx].size for idx in range(len(visuals))]
+            gen_kwargs["image_sizes"] = [visuals[idx].size for idx in range(len(visuals))]
             if "max_new_tokens" not in gen_kwargs:
                 gen_kwargs["max_new_tokens"] = 1024
             if "temperature" not in gen_kwargs:
@@ -336,45 +398,39 @@ class MLlava(lmms):
                 gen_kwargs["top_p"] = None
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
-            
-            # print(question_input)
-            # print(images)
-            assert len(question_input) == 1, "Batch size should be 1"
-            inputs = self.processor(images=images, text=question_input, return_tensors="pt", truncation=True)
-            inputs = {k: v.to(self.device) if v is not None else v for k, v in inputs.items()}
+
+            input_ids_list = [tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt") for prompt in question_input]
+            pad_token_ids = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
+            input_ids = self.pad_sequence(input_ids_list, batch_first=True, padding_value=pad_token_ids).to(self.device)
+            attention_masks = input_ids.ne(pad_token_ids).to(self.device)
+            # These steps are not in LLaVA's original code, but are necessary for generation to work
+            # TODO: pay attention to this major generation step...
+            stopping_criteria = KeywordsStoppingCriteria([conv.sep], self._tokenizer, input_ids)
             try:
                 cont = self.model.generate(
-                    **inputs,
+                    input_ids,
+                    attention_mask=attention_masks,
+                    pad_token_id=pad_token_ids,
+                    images=image_tensor,
+                    # image_sizes=gen_kwargs["image_sizes"],
                     do_sample=True if gen_kwargs["temperature"] > 0 else False,
                     temperature=gen_kwargs["temperature"],
+                    stopping_criteria=[stopping_criteria],
                     top_p=gen_kwargs["top_p"],
                     num_beams=gen_kwargs["num_beams"],
                     max_new_tokens=gen_kwargs["max_new_tokens"],
                     use_cache=self.use_cache,
-                    eos_token_id=self.terminators,
                 )
-                pure_output_ids = cont[:, inputs["input_ids"].shape[1] :]
-                text_outputs = self.tokenizer.batch_decode(pure_output_ids, skip_special_tokens=True)
-                # text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)
+                input_token_len = input_ids.shape[1]
+                text_outputs = self.tokenizer.batch_decode(cont[:, input_token_len:], skip_special_tokens=True)
+                # remove "\n###" at the end of the text output
+                text_outputs = [x.replace("\n###", "") for x in text_outputs]
             except Exception as e:
                 eval_logger.error(f"Error {e} in generating")
                 cont = ""
                 text_outputs = [""]
-            # cont_toks_list = cont.tolist()
-            # for cont_toks, context in zip(cont_toks_list, contexts):
-            # discard context + left-padding toks if using causal decoder-only LMM
-            # if self.truncate_context:
-            #     cont_toks = cont_toks[input_ids.shape[1] :]
-            # use secondary stop seqs to cut off should-have-been-stopped content post-hoc
-            # if self.truncate_context:
-            #     for term in until:
-            #         if len(term) > 0:
-            #             # ignore '' separator,
-            #             # for seq2seq case where self.tok_decode(self.eot_token_id) = ''
-            #             text_outputs = text_outputs.split(term)[0]
-            # change "A." to "A"
-            if re.match(r"[A-Z]\.", text_outputs[0].strip()):
-                text_outputs[0] = text_outputs[0].strip()[:-1]
+                raise e
+
             res.extend(text_outputs)
             self.cache_hook.add_partial("generate_until", (context, gen_kwargs), text_outputs)
             pbar.update(1)

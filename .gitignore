@@ -26,3 +26,6 @@ lmms_eval/tasks/hallusion_bench/hallusion_output_vd_model.json
 zk.log
 /*.ipynb
 /*.sh
+/LLaVA
+/flash-attention
+/sail_eval_script.sh

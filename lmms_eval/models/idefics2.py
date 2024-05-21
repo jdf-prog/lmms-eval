@@ -23,17 +23,14 @@ warnings.filterwarnings("ignore")
 
 eval_logger = logging.getLogger("lmms-eval")
 
-from .model_utils.mllava.utils import chat_mllava
-from .model_utils.mllava import MLlavaProcessor, LlavaForConditionalGeneration
-# from .model_utils.mllava.conversation import conv_mllava_v1_mmtag as default_conv
-from .model_utils.mllava.conversation import conv_mllava_v1 as default_conv, conv_templates
+
+from transformers import AutoProcessor, Idefics2ForConditionalGeneration
 
 
-
-@register_model("mllava")
-class MLlava(lmms):
+@register_model("idefics2")
+class Idefics2(lmms):
     """
-    MLlava Model
+    Idefics2 Model
     """
 
     def __init__(
@@ -64,7 +61,7 @@ class MLlava(lmms):
             self._device = torch.device(device)
             self.device_map = device_map
             
-        processor = MLlavaProcessor.from_pretrained(pretrained, trust_remote_code=trust_remote_code)
+        processor = AutoProcessor.from_pretrained(pretrained)
         self.processor = processor
         self._image_processor = processor.image_processor
         self._tokenizer = processor.tokenizer
@@ -74,11 +71,11 @@ class MLlava(lmms):
         else:
             attn_implementation = None
         
-        self._model = LlavaForConditionalGeneration.from_pretrained(
+        self._model = Idefics2ForConditionalGeneration.from_pretrained(
             pretrained, device_map=self._device, attn_implementation=attn_implementation, 
             trust_remote_code=trust_remote_code, revision=revision, torch_dtype=torch.bfloat16).eval()
         
-        self._max_length = int(pretrained.split("_")[-1])
+        self._max_length = self._model.config.text_config.max_position_embeddings
 
         self._config = self._model.config
         self.model.eval()
@@ -119,18 +116,6 @@ class MLlava(lmms):
             self.model.to(self._device)
             self._rank = 0
             self._world_size = 1
-        
-        
-        if "llama-3" in self.model.language_model.name_or_path.lower():
-            self.conv_template = conv_templates['llama_3']
-            self.terminators = [
-                processor.tokenizer.eos_token_id,
-                processor.tokenizer.convert_tokens_to_ids("<|eot_id|>")
-            ]
-        else:
-            self.conv_template = default_conv
-            self.terminators = None
-        self.conv_template
 
     @property
     def config(self):
@@ -195,62 +180,7 @@ class MLlava(lmms):
         return self.tokenizer.decode(tokens)
 
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
-        # TODO
-        res = []
-        pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
-
-        for contexts, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
-            # encode, pad, and truncate contexts for this batch
-            if type(doc_to_target) == str:
-                continuation = doc_to_target
-            else:
-                continuation = doc_to_target(self.task_dict[task][split][doc_id])
-            visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            assert len(visuals) == 1, "Batch size should be 1"
-            visuals = self.flatten(visuals)
-            if visuals:
-                images = visuals
-            else:
-                images = None
-
-            prompts_input = contexts[0]
-
-            conv = self.conv_template.copy()
-            if prompts_input.count("<image>") < len(visuals):
-                prompts_input = "<image> " * (len(visuals) - prompts_input.count("<image>")) + prompts_input
-            conv.append_message(conv.roles[0], prompts_input)
-            conv.append_message(conv.roles[1], None)
-            prompt = conv.get_prompt()
-            if prompt.count("<image>") < len(visuals):
-                prompt = "<image> " * (len(visuals) - prompt.count("<image>")) + "\n" + prompt
-            
-            inputs_without_cont = self.processor(images=images, text=prompt, return_tensors="pt", truncation=True, padding="longest")
-            # Add the answer of the second role
-            
-            conv.messages[1][1] = continuation
-            prompt = conv.get_prompt()
-            inputs_with_cont = self.processor(images=images, text=prompt, return_tensors="pt", truncation=True, padding="longest")
-            
-            labels = inputs_with_cont["input_ids"].clone()
-            input_ids = inputs_with_cont["input_ids"]
-            input_ids_without_cont = inputs_without_cont["input_ids"]
-            # Context part no need to calculate for loss
-            labels[0, : inputs_without_cont["input_ids"].shape[1]] = -100
-            
-            with torch.inference_mode():
-                outputs = self.model(**inputs_with_cont, labels=labels, use_cache=True)
-            loss = outputs["loss"]
-            # loss = torch.exp(loss)
-            logits = outputs["logits"]
-            greedy_tokens = logits.argmax(dim=-1)
-            
-            cont_toks = input_ids[:, input_ids_without_cont.shape[1] :]  # [1, seq]
-            greedy_tokens = greedy_tokens[:, input_ids_without_cont.shape[1] : input_ids.shape[1]]  # [1, seq]
-            max_equal = (greedy_tokens == cont_toks).all()
-            res.append((float(loss.item()), bool(max_equal)))
-            pbar.update(1)
-        pbar.close()
-        return res
+        raise NotImplementedError("Idefics2 likelihood not implemented yet")
 
     def flatten(self, input):
         new_list = []
@@ -317,12 +247,13 @@ class MLlava(lmms):
             for i, context in enumerate(contexts):
                 question = context
                 num_images = len(visuals[i])
-                if question.count("<image>") < num_images:
-                    question = "<image> " * (num_images - question.count("<image>")) + "\n" + question
-                conv = self.conv_template.copy()
-                conv.append_message(conv.roles[0], question)
-                conv.append_message(conv.roles[1], None)
-                prompt_question = conv.get_prompt()
+                messages = [
+                    {
+                        "role": "user",
+                        "content": [ {"type": "image"}] * num_images + [{"type": "text", "text": question}]
+                    }
+                ]
+                prompt_question = self.processor.apply_chat_template(messages, add_generation_prompt=True)
                 question_input.append(prompt_question)
 
             # input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
@@ -337,8 +268,6 @@ class MLlava(lmms):
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
             
-            # print(question_input)
-            # print(images)
             assert len(question_input) == 1, "Batch size should be 1"
             inputs = self.processor(images=images, text=question_input, return_tensors="pt", truncation=True)
             inputs = {k: v.to(self.device) if v is not None else v for k, v in inputs.items()}
@@ -351,7 +280,6 @@ class MLlava(lmms):
                     num_beams=gen_kwargs["num_beams"],
                     max_new_tokens=gen_kwargs["max_new_tokens"],
                     use_cache=self.use_cache,
-                    eos_token_id=self.terminators,
                 )
                 pure_output_ids = cont[:, inputs["input_ids"].shape[1] :]
                 text_outputs = self.tokenizer.batch_decode(pure_output_ids, skip_special_tokens=True)

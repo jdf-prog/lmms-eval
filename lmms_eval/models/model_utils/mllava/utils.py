@@ -2,8 +2,7 @@ import PIL
 import torch
 from .modeling_llava import LlavaForConditionalGeneration
 from .processing_llava import MLlavaProcessor
-# from .conversation import conv_mllava_v1_mmtag as default_conv
-from .conversation import conv_mllava_v1 as default_conv
+from .conversation import conv_mllava_v1 as default_conv, conv_templates
 
 from typing import List, Tuple, Union, Tuple
 
@@ -30,15 +29,25 @@ def chat_mllava(
         
 
     """
-    conv = default_conv.copy()
+    if "llama-3" in model.language_model.name_or_path.lower():
+        conv = conv_templates['llama_3']
+    else:
+        conv = default_conv
+    conv = conv.copy()
     conv.messages = []
     if history is not None:
         for message in history:
             message["role"] = message["role"].upper()
             assert message["role"] in conv.roles
             conv.append_message(message["role"], message["text"])
+        terminators = [
+            processor.tokenizer.eos_token_id,
+            processor.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+        ]
     else:
         history = []
+        terminators = None
+    kwargs["eos_token_id"] = terminators
     conv.append_message(conv.roles[0], text)
     conv.append_message(conv.roles[1], "")
     

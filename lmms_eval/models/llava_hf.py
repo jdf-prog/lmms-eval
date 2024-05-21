@@ -28,7 +28,7 @@ from .model_utils.llava_hf.conversation import conv_llava_v1 as default_conv
 
 
 @register_model("llava_hf")
-class MLlava(lmms):
+class LlavaHf(lmms):
     """
     MLlava Model
     """

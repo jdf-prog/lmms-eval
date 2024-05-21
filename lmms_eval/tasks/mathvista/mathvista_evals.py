@@ -2,6 +2,7 @@ import time
 import requests
 import re
 from Levenshtein import distance
+from easy_openai import openai_completions
 import logging
 
 eval_logger = logging.getLogger("lmms-eval")
@@ -51,6 +52,12 @@ class MathVistaEvaluator:
     def __init__(self, api_key, gpt_model="gpt-3.5-turbo", quick_extract=False):
         self.api_key = api_key
         self.gpt_model = gpt_model
+        if self.gpt_model == "gpt-3.5-turbo":
+            self.gpt_model = "gpt-35-turbo"
+            # print(f"Changed gpt_model from {gpt_model} to {self.gpt_model}")
+        elif "gpt-4" in self.gpt_model:
+            self.gpt_model = "gpt-4"
+            # print(f"Changed gpt_model from {gpt_model} to {self.gpt_model}")
         self.quick_extract = quick_extract
 
     def _post_request(self, payload):
@@ -63,41 +70,48 @@ class MathVistaEvaluator:
         return response.json()
 
     def get_chat_response(self, prompt, temperature=0, max_tokens=256, n=1, patience=10000000, sleep_time=0):
-        messages = [
-            {"role": "user", "content": prompt},
-        ]
-        payload = {"model": self.gpt_model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens, "n": n}
+        # messages = [
+        #     {"role": "user", "content": prompt},
+        # ]
+        # payload = {"model": self.gpt_model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens, "n": n}
 
-        while patience > 0:
-            patience -= 1
-            try:
-                response = self._post_request(payload)
-                if n == 1:
-                    prediction = response["choices"][0]["message"]["content"].strip()
-                    if prediction and prediction != "":
-                        return prediction
-                else:
-                    prediction = [choice["message"]["content"].strip() for choice in response["choices"]]
-                    if prediction and prediction[0] != "":
-                        return prediction
+        # while patience > 0:
+        #     patience -= 1
+        #     try:
+        #         response = self._post_request(payload)
+        #         if n == 1:
+        #             prediction = response["choices"][0]["message"]["content"].strip()
+        #             if prediction and prediction != "":
+        #                 return prediction
+        #         else:
+        #             prediction = [choice["message"]["content"].strip() for choice in response["choices"]]
+        #             if prediction and prediction[0] != "":
+        #                 return prediction
 
-            except Exception as e:
-                if "Rate limit" not in str(e):
-                    eval_logger.error(e)
+        #     except Exception as e:
+        #         if "Rate limit" not in str(e):
+        #             eval_logger.error(e)
 
-                if "Please reduce the length of the messages" in str(e):
-                    eval_logger.error("!!Reduce prompt size")
-                    # reduce input prompt and keep the tail
-                    new_size = int(len(prompt) * 0.9)
-                    new_start = len(prompt) - new_size
-                    prompt = prompt[new_start:]
-                    payload["messages"] = [
-                        {"role": "user", "content": prompt},
-                    ]
+        #         if "Please reduce the length of the messages" in str(e):
+        #             eval_logger.error("!!Reduce prompt size")
+        #             # reduce input prompt and keep the tail
+        #             new_size = int(len(prompt) * 0.9)
+        #             new_start = len(prompt) - new_size
+        #             prompt = prompt[new_start:]
+        #             payload["messages"] = [
+        #                 {"role": "user", "content": prompt},
+        #             ]
 
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-        return ""
+        #         if sleep_time > 0:
+        #             time.sleep(sleep_time)
+        # return ""
+        assert n == 1, "n must be 1"
+        results = openai_completions(
+            [prompt], 
+            model_name=self.gpt_model, 
+            temperature=temperature, 
+            max_tokens=max_tokens)
+        return results['completions'][0]
 
     def verify_extraction(self, extraction):
         extraction = extraction.strip()
