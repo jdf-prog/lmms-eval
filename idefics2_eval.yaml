@@ -1,0 +1,120 @@
+- model: idefics2
+  model_args: pretrained=HuggingFaceM4/idefics2-8b
+  tasks: textvqa
+  batch_size: 1
+  log_samples: true
+  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_textvqa
+  output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: ok_vqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_ok_vqa
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: mmbench
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_mmbench
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: mmmu
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_mmmu
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: chartqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_chartqa
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: ai2d
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_ai2d
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: mme
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_mme
+#   output_path: "./logs/"
+
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: hallusion_bench
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_hallusion_bench
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: docvqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_docvqa
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: ocrbench
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_ocrbench
+#   output_path: "./logs/"
+  
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: gqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_gqa
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: scienceqa_img
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_scienceqa_img
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: iconqa
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_iconqa
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: vqav2
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_vqav2
+#   output_path: "./logs/"
+
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: pope
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_pope
+#   output_path: "./logs/"
