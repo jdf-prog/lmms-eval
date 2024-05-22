@@ -73,7 +73,7 @@ class Idefics2(lmms):
         
         self._model = Idefics2ForConditionalGeneration.from_pretrained(
             pretrained, device_map=self._device, attn_implementation=attn_implementation, 
-            trust_remote_code=trust_remote_code, revision=revision, torch_dtype=torch.bfloat16).eval()
+            trust_remote_code=trust_remote_code, revision=revision, torch_dtype=torch.float16).eval()
         
         self._max_length = self._model.config.text_config.max_position_embeddings
 
@@ -300,11 +300,7 @@ class Idefics2(lmms):
             #             # ignore '' separator,
             #             # for seq2seq case where self.tok_decode(self.eot_token_id) = ''
             #             text_outputs = text_outputs.split(term)[0]
-            # change "A." to "A"
             
-            if re.match(r"[A-Z]\.", text_outputs[0].strip()):
-                text_outputs[0] = text_outputs[0].strip()[:-1]
-            # answer: 
             if text_outputs[0].strip().lower().startswith("answer:"):
                 text_outputs[0] = text_outputs[0].strip()[7:].strip()
             res.extend(text_outputs)
