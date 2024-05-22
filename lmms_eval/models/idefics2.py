@@ -250,7 +250,7 @@ class Idefics2(lmms):
                 messages = [
                     {
                         "role": "user",
-                        "content": [ {"type": "image"}] * num_images + [{"type": "text", "text": question}]
+                        "content": [ {"type": "image"}] * num_images + [{"type": "text", "text": question.replace("<image>", "")}]
                     }
                 ]
                 prompt_question = self.processor.apply_chat_template(messages, add_generation_prompt=True)
@@ -301,8 +301,12 @@ class Idefics2(lmms):
             #             # for seq2seq case where self.tok_decode(self.eot_token_id) = ''
             #             text_outputs = text_outputs.split(term)[0]
             # change "A." to "A"
+            
             if re.match(r"[A-Z]\.", text_outputs[0].strip()):
                 text_outputs[0] = text_outputs[0].strip()[:-1]
+            # answer: 
+            if text_outputs[0].strip().lower().startswith("answer:"):
+                text_outputs[0] = text_outputs[0].strip()[7:].strip()
             res.extend(text_outputs)
             self.cache_hook.add_partial("generate_until", (context, gen_kwargs), text_outputs)
             pbar.update(1)

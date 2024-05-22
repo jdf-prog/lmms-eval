@@ -54,7 +54,6 @@
   log_samples_suffix: mantis-8b-idefics2_8192_mme
   output_path: "./logs/"
 
-
 - model: idefics2
   model_args: pretrained=Mantis-VL/mantis-8b-idefics2_8192
   tasks: hallusion_bench
@@ -117,4 +116,12 @@
   batch_size: 1
   log_samples: true
   log_samples_suffix: mantis-8b-idefics2_8192_pope
+  output_path: "./logs/"
+
+- model: idefics2
+  model_args: pretrained=Mantis-VL/mantis-8b-idefics2_8192
+  tasks: mathvista
+  batch_size: 1
+  log_samples: true
+  log_samples_suffix: mantis-8b-idefics2_8192_mathvista
   output_path: "./logs/"
