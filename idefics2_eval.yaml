@@ -119,10 +119,10 @@
   log_samples_suffix: idefics2_pope
   output_path: "./logs/"
 
-- model: idefics2
-  model_args: pretrained=HuggingFaceM4/idefics2-8b
-  tasks: mathvista
-  batch_size: 1
-  log_samples: true
-  log_samples_suffix: idefics2_mathvista
-  output_path: "./logs/"
+# - model: idefics2
+#   model_args: pretrained=HuggingFaceM4/idefics2-8b
+#   tasks: mathvista
+#   batch_size: 1
+#   log_samples: true
+#   log_samples_suffix: idefics2_mathvista
+#   output_path: "./logs/"
