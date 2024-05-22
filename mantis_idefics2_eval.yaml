@@ -3,7 +3,7 @@
   tasks: textvqa
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_textvqa
+  log_samples_suffix: mantis-8b-idefics2_8192_textvqa
   output_path: "./logs/"
 
 - model: idefics2
@@ -11,7 +11,7 @@
   tasks: ok_vqa
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_ok_vqa
+  log_samples_suffix: mantis-8b-idefics2_8192_ok_vqa
   output_path: "./logs/"
 
 - model: idefics2
@@ -19,7 +19,7 @@
   tasks: mmbench
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_mmbench
+  log_samples_suffix: mantis-8b-idefics2_8192_mmbench
   output_path: "./logs/"
 
 - model: idefics2
@@ -27,7 +27,7 @@
   tasks: mmmu
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_mmmu
+  log_samples_suffix: mantis-8b-idefics2_8192_mmmu
   output_path: "./logs/"
 
 - model: idefics2
@@ -35,7 +35,7 @@
   tasks: chartqa
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_chartqa
+  log_samples_suffix: mantis-8b-idefics2_8192_chartqa
   output_path: "./logs/"
 
 - model: idefics2
@@ -43,7 +43,7 @@
   tasks: ai2d
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_ai2d
+  log_samples_suffix: mantis-8b-idefics2_8192_ai2d
   output_path: "./logs/"
 
 - model: idefics2
@@ -51,7 +51,7 @@
   tasks: mme
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_mme
+  log_samples_suffix: mantis-8b-idefics2_8192_mme
   output_path: "./logs/"
 
 
@@ -60,7 +60,7 @@
   tasks: hallusion_bench
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_hallusion_bench
+  log_samples_suffix: mantis-8b-idefics2_8192_hallusion_bench
   output_path: "./logs/"
 
 - model: idefics2
@@ -68,7 +68,7 @@
   tasks: docvqa
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_docvqa
+  log_samples_suffix: mantis-8b-idefics2_8192_docvqa
   output_path: "./logs/"
 
 - model: idefics2
@@ -76,7 +76,7 @@
   tasks: ocrbench
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_ocrbench
+  log_samples_suffix: mantis-8b-idefics2_8192_ocrbench
   output_path: "./logs/"
   
 - model: idefics2
@@ -84,7 +84,7 @@
   tasks: gqa
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_gqa
+  log_samples_suffix: mantis-8b-idefics2_8192_gqa
   output_path: "./logs/"
 
 - model: idefics2
@@ -92,7 +92,7 @@
   tasks: scienceqa_img
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_scienceqa_img
+  log_samples_suffix: mantis-8b-idefics2_8192_scienceqa_img
   output_path: "./logs/"
 
 - model: idefics2
@@ -100,7 +100,7 @@
   tasks: iconqa
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_iconqa
+  log_samples_suffix: mantis-8b-idefics2_8192_iconqa
   output_path: "./logs/"
 
 - model: idefics2
@@ -108,7 +108,7 @@
   tasks: vqav2
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_vqav2
+  log_samples_suffix: mantis-8b-idefics2_8192_vqav2
   output_path: "./logs/"
 
 - model: idefics2
@@ -116,5 +116,5 @@
   tasks: pope
   batch_size: 1
   log_samples: true
-  log_samples_suffix: llava_siglip_llama3_8b_finetune_8192_pope
+  log_samples_suffix: mantis-8b-idefics2_8192_pope
   output_path: "./logs/"
