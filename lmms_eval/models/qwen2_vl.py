@@ -1,4 +1,5 @@
 import base64
+import os
 from io import BytesIO
 from typing import List, Optional, Tuple, Union
 
@@ -195,6 +196,8 @@ class Qwen2_VL(lmms):
                 if len(visuals) > 0:
                     visual = visuals[i] if i < len(visuals) else None
                     if isinstance(visual, str) and visual.endswith((".mp4", ".avi", ".mov")):  # Video file
+                        # expand user path
+                        visual = os.path.expanduser(visual)
                         vr = decord.VideoReader(visual)
                         first_frame = vr[0].asnumpy()
                         height, width = first_frame.shape[:2]
