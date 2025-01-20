@@ -181,6 +181,9 @@ class InternVL2(lmms):
         batch_size: str = "1",
         num_frame: int = 32,
         num_layers=None,
+        enable_shared_cross_attention=False,
+        enable_cross_attention=False,
+        local_attention_group_size=258*8,
         **kwargs,
     ):
         super().__init__()
@@ -206,12 +209,13 @@ class InternVL2(lmms):
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
 
-        # self._model = AutoModel.from_pretrained(self.path, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True, trust_remote_code=True, device_map=device_map).eval()
+        local_attention_group_size = local_attention_group_size if isinstance(local_attention_group_size, int) else eval(local_attention_group_size)
         self._tokenizer = InternLM2Tokenizer.from_pretrained(self.path, trust_remote_code=True, device_map=device_map)
-        config = InternVLChatConfig.from_pretrained(pretrained, enable_shared_cross_attention=False, local_attention_group_size=258*8, enable_cross_attention=False)
+        config = InternVLChatConfig.from_pretrained(pretrained, enable_shared_cross_attention=enable_shared_cross_attention, enable_cross_attention=enable_cross_attention, local_attention_group_size=local_attention_group_size)
         config.llm_config.enable_cross_attention = config.enable_cross_attention
         config.llm_config.local_attention_group_size = config.local_attention_group_size
         config.llm_config.enable_shared_cross_attention = config.enable_shared_cross_attention
+        print(config)
         self._model = InternVLChatModel.from_pretrained(pretrained, config=config, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True, use_flash_attn=True, trust_remote_code=True, device_map=device_map).eval()
         
 
