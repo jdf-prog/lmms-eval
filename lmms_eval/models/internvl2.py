@@ -180,6 +180,8 @@ class InternVL2(lmms):
         device_map: str = "cuda:0",
         batch_size: str = "1",
         num_frame: int = 32,
+        max_num_patches: int = 12,
+        max_frame_num_patches: int = 1,
         num_layers=None,
         enable_shared_cross_attention=False,
         enable_cross_attention=False,
@@ -189,7 +191,8 @@ class InternVL2(lmms):
         super().__init__()
 
         self.path = pretrained
-        self.num_frame = num_frame
+        self.num_frame = num_frame if isinstance(num_frame, int) else eval(num_frame)
+        self.max_num_patches = max_num_patches if isinstance(max_num_patches, int) else eval(max_num_patches)
 
         batch_size = int(batch_size)
         assert batch_size == 1, f"Batch size should be 1 for InternVL2, but got {batch_size}."
@@ -215,11 +218,12 @@ class InternVL2(lmms):
         config.llm_config.enable_cross_attention = config.enable_cross_attention
         config.llm_config.local_attention_group_size = config.local_attention_group_size
         config.llm_config.enable_shared_cross_attention = config.enable_shared_cross_attention
-        print(config)
         self._model = InternVLChatModel.from_pretrained(pretrained, config=config, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True, use_flash_attn=True, trust_remote_code=True, device_map=device_map).eval()
         
 
-        self.processor = InternVLChatProcessor(self._tokenizer, enable_cross_attention=self._model.config.enable_cross_attention, max_num_patches=1)
+        self.processor = InternVLChatProcessor(
+            self._tokenizer, enable_cross_attention=self._model.config.enable_cross_attention, video_num_segments=self.num_frame, \
+            max_num_patches=self.max_num_patches, max_frame_num_patches=max_frame_num_patches)
         
         self.model.img_context_token_id = self.processor.img_context_token_id
         self.model.img_start_token_id = self.processor.img_start_token_id
@@ -333,9 +337,11 @@ class InternVL2(lmms):
                     # visuals = [load_image(visual).to(torch.bfloat16).cuda() for visual in visuals]
                     # pixel_values = torch.cat(visuals, dim=0)
                     # num_patches_list = [visual.size(0) for visual in visuals]
-                    image_tokens = ["<image>"] * len(visuals)
-                    image_tokens = " ".join(image_tokens)
-                    contexts = image_tokens + "\n" + contexts
+                    num_image_tokens_in_context = contexts.count("<image>")
+                    if num_image_tokens_in_context < len(visuals):
+                        image_tokens = ["<image>"] * (len(visuals) - num_image_tokens_in_context)
+                        image_tokens = " ".join(image_tokens)
+                        contexts = image_tokens + "\n" + contexts
                 else:
                     pixel_values = None
                     num_patches_list = None
@@ -372,8 +378,8 @@ class InternVL2(lmms):
                 responses = self.model.generate(**model_inputs, **generation_config)
                 response = self.processor.decode(responses[0])
             
-            print("Contexts:", contexts)
-            print("Response:", response)
+            # print("Contexts:", contexts)
+            # print("Response:", response)
             res.append(response)
             pbar.update(1)
         pbar.close()
