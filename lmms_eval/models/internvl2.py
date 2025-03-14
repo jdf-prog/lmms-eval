@@ -187,7 +187,7 @@ class InternVL2(lmms):
         enable_shared_cross_attention=False,
         enable_cross_attention=False,
         local_attention_group_size=8,
-        top_k=-1,
+        top_k=100,
         predict_type='key_norms_small',
         top_k_starting_layer=0,
         **kwargs,
@@ -379,8 +379,6 @@ class InternVL2(lmms):
                 query = conv.get_prompt()
                 query = " ".join(video_tokens) + "\n" + query
                 model_inputs = self.processor(query, videos=visuals)
-                print(self.processor.decode(model_inputs['input_ids'][0]))
-                exit(1)
                 model_inputs['pixel_values'] = model_inputs['pixel_values'].to(torch.bfloat16)
                 for key in model_inputs:
                     if isinstance(model_inputs[key], torch.Tensor):
