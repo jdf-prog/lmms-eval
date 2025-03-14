@@ -169,6 +169,7 @@ def split_model(model_name, num_layers=None):
 
     return device_map
 
+PER_IMAGE_NUM_TOKENS = 263 # 258 + 5
 
 @register_model("internvl2")
 class InternVL2(lmms):
@@ -185,7 +186,10 @@ class InternVL2(lmms):
         num_layers=None,
         enable_shared_cross_attention=False,
         enable_cross_attention=False,
-        local_attention_group_size=258*8,
+        local_attention_group_size=8,
+        top_k=-1,
+        predict_type='key_norms_small',
+        top_k_starting_layer=0,
         **kwargs,
     ):
         super().__init__()
@@ -213,13 +217,19 @@ class InternVL2(lmms):
             self.device_map = f"cuda:{accelerator.local_process_index}"
 
         local_attention_group_size = local_attention_group_size if isinstance(local_attention_group_size, int) else eval(local_attention_group_size)
+        local_attention_group_size = PER_IMAGE_NUM_TOKENS * local_attention_group_size
         self._tokenizer = InternLM2Tokenizer.from_pretrained(self.path, trust_remote_code=True, device_map=device_map)
         config = InternVLChatConfig.from_pretrained(pretrained, enable_shared_cross_attention=enable_shared_cross_attention, enable_cross_attention=enable_cross_attention, local_attention_group_size=local_attention_group_size)
         config.llm_config.enable_cross_attention = config.enable_cross_attention
         config.llm_config.local_attention_group_size = config.local_attention_group_size
         config.llm_config.enable_shared_cross_attention = config.enable_shared_cross_attention
         self._model = InternVLChatModel.from_pretrained(pretrained, config=config, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True, use_flash_attn=True, trust_remote_code=True, device_map=device_map).eval()
-        
+        for i, decoder_layer in enumerate(self._model.language_model.model.layers):
+            if i >= top_k_starting_layer:
+                decoder_layer.attention.top_k = top_k
+            else:
+                decoder_layer.attention.top_k = -1
+            decoder_layer.attention.predict_type = predict_type
 
         self.processor = InternVLChatProcessor(
             self._tokenizer, enable_cross_attention=self._model.config.enable_cross_attention, video_num_segments=self.num_frame, \
@@ -363,12 +373,14 @@ class InternVL2(lmms):
                 assert len(visuals) == 1, f"Only one video is supported, but got {len(visuals)} videos."
                 video_path = visuals[0]
                 video_tokens = ["<video>"]
-                video_tokens = " ".join(video_tokens)
-                contexts = video_tokens + "\n" + contexts
+                # contexts = video_tokens + "\n" + contexts
                 conv.append_message(conv.roles[0], contexts)
                 conv.append_message(conv.roles[1], None)
                 query = conv.get_prompt()
+                query = " ".join(video_tokens) + "\n" + query
                 model_inputs = self.processor(query, videos=visuals)
+                print(self.processor.decode(model_inputs['input_ids'][0]))
+                exit(1)
                 model_inputs['pixel_values'] = model_inputs['pixel_values'].to(torch.bfloat16)
                 for key in model_inputs:
                     if isinstance(model_inputs[key], torch.Tensor):
@@ -378,8 +390,8 @@ class InternVL2(lmms):
                 responses = self.model.generate(**model_inputs, **generation_config)
                 response = self.processor.decode(responses[0])
             
-            # print("Contexts:", contexts)
-            # print("Response:", response)
+            print("Contexts:", contexts)
+            print("Response:", response)
             res.append(response)
             pbar.update(1)
         pbar.close()
