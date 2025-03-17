@@ -216,9 +216,9 @@ class InternVL2(lmms):
         else:
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
-
         local_attention_group_size = local_attention_group_size if isinstance(local_attention_group_size, int) else eval(local_attention_group_size)
-        local_attention_group_size = PER_IMAGE_NUM_TOKENS * local_attention_group_size
+        if local_attention_group_size > 0:
+            local_attention_group_size = PER_IMAGE_NUM_TOKENS * local_attention_group_size
         self._tokenizer = InternLM2Tokenizer.from_pretrained(self.path, trust_remote_code=True, device_map=device_map)
         config = InternVLChatConfig.from_pretrained(pretrained, 
             enable_shared_cross_attention=enable_shared_cross_attention, enable_cross_attention=enable_cross_attention, 
