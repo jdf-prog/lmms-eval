@@ -363,6 +363,8 @@ class InternVL2(lmms):
                 conv.append_message(conv.roles[0], contexts)
                 conv.append_message(conv.roles[1], None)
                 query = conv.get_prompt()
+                num_images_tokens = query.count("<image>")
+                query = " ".join(["<image>"] * num_images_tokens) + "\n" + query.replace("<image> ", " ").replace("<image>", " ")
                 model_inputs = self.processor(query, images=visuals)
                 model_inputs['pixel_values'] = model_inputs['pixel_values'].to(torch.bfloat16)
                 for key in model_inputs:
