@@ -216,7 +216,7 @@ class InternVL2(lmms):
         else:
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
-        local_attention_group_size = local_attention_group_size if isinstance(local_attention_group_size, int) else eval(local_attention_group_size)
+        local_attention_group_size = eval(local_attention_group_size) if isinstance(local_attention_group_size, str) else local_attention_group_size
         if local_attention_group_size > 0:
             local_attention_group_size = PER_IMAGE_NUM_TOKENS * local_attention_group_size
         self._tokenizer = InternLM2Tokenizer.from_pretrained(self.path, trust_remote_code=True, device_map=device_map)
@@ -364,7 +364,8 @@ class InternVL2(lmms):
                 conv.append_message(conv.roles[1], None)
                 query = conv.get_prompt()
                 num_images_tokens = query.count("<image>")
-                query = " ".join(["<image>"] * num_images_tokens) + "\n" + query.replace("<image> ", " ").replace("<image>", " ")
+                query = " ".join(["<image>"] * num_images_tokens) + "\n" + query.replace("<image> ", " ").replace("<image>", "")
+                print("Query:", query)
                 model_inputs = self.processor(query, images=visuals)
                 model_inputs['pixel_values'] = model_inputs['pixel_values'].to(torch.bfloat16)
                 for key in model_inputs:
