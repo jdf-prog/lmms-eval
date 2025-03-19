@@ -374,7 +374,7 @@ class InternVL2(lmms):
                 eos_token_id = self.tokenizer.convert_tokens_to_ids(conv.sep.strip())
                 generation_config = dict(max_new_tokens=1024, do_sample=False, eos_token_id=eos_token_id)
                 responses = self.model.generate(**model_inputs, **generation_config)
-                response = self.processor.decode(responses[0])
+                response = self.processor.decode(responses[0], skip_special_tokens=True)
                 
             elif self.modality == "video":
                 assert len(visuals) == 1, f"Only one video is supported, but got {len(visuals)} videos."
@@ -394,7 +394,7 @@ class InternVL2(lmms):
                 generation_config = dict(max_new_tokens=1024, do_sample=False, eos_token_id=eos_token_id)
                 responses = self.model.generate(**model_inputs, **generation_config)
                 response = self.processor.decode(responses[0])
-            
+            response = response.strip()
             print("Contexts:", contexts)
             print("Response:", response)
             res.append(response)
