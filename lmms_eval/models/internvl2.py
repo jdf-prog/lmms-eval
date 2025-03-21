@@ -191,6 +191,8 @@ class InternVL2(lmms):
         predict_type='key_norms_small',
         adaptive_local_attention=False,
         top_k_starting_layer=0,
+        prune_during_prefill_layer_idx=-1,
+        prune_for_query=False,
         **kwargs,
     ):
         super().__init__()
@@ -217,16 +219,19 @@ class InternVL2(lmms):
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
         local_attention_group_size = eval(local_attention_group_size) if isinstance(local_attention_group_size, str) else local_attention_group_size
+        local_attention_group_size = int(local_attention_group_size)
         if local_attention_group_size > 0:
             local_attention_group_size = PER_IMAGE_NUM_TOKENS * local_attention_group_size
         self._tokenizer = InternLM2Tokenizer.from_pretrained(self.path, trust_remote_code=True, device_map=device_map)
         config = InternVLChatConfig.from_pretrained(pretrained, 
             enable_shared_cross_attention=enable_shared_cross_attention, enable_cross_attention=enable_cross_attention, 
-            local_attention_group_size=local_attention_group_size, adaptive_local_attention=adaptive_local_attention)
+            local_attention_group_size=local_attention_group_size, adaptive_local_attention=adaptive_local_attention,
+            prune_for_query=prune_for_query)
         config.llm_config.enable_cross_attention = config.enable_cross_attention
         config.llm_config.local_attention_group_size = config.local_attention_group_size
         config.llm_config.enable_shared_cross_attention = config.enable_shared_cross_attention
         config.llm_config.adaptive_local_attention = config.adaptive_local_attention
+        config.llm_config.prune_for_query = config.prune_for_query
         self._model = InternVLChatModel.from_pretrained(pretrained, config=config, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True, use_flash_attn=True, trust_remote_code=True, device_map=device_map).eval()
         for i, decoder_layer in enumerate(self._model.language_model.model.layers):
             if i >= top_k_starting_layer:
@@ -234,6 +239,8 @@ class InternVL2(lmms):
             else:
                 decoder_layer.attention.top_k = -1
             decoder_layer.attention.predict_type = predict_type
+            if i == prune_during_prefill_layer_idx:
+                decoder_layer.prune_during_prefill = True
 
         self.processor = InternVLChatProcessor(
             self._tokenizer, enable_cross_attention=self._model.config.enable_cross_attention, video_num_segments=self.num_frame, \
@@ -397,6 +404,7 @@ class InternVL2(lmms):
             response = response.strip()
             print("Contexts:", contexts)
             print("Response:", response)
+            # exit(1)
             res.append(response)
             pbar.update(1)
         pbar.close()
