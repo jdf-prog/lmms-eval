@@ -383,6 +383,8 @@ class InternVL2(lmms):
                 response = self.processor.decode(responses[0], skip_special_tokens=True)
                 
             elif self.modality == "video":
+                import time
+                start = time.time()
                 assert len(visuals) == 1, f"Only one video is supported, but got {len(visuals)} videos."
                 video_path = visuals[0]
                 video_tokens = ["<video>"]
@@ -392,6 +394,9 @@ class InternVL2(lmms):
                 query = conv.get_prompt()
                 query = " ".join(video_tokens) + "\n" + query
                 model_inputs = self.processor(query, videos=visuals)
+                end = time.time()
+                print("Video Preprocessing Time:", end - start)
+                start = time.time()
                 model_inputs['pixel_values'] = model_inputs['pixel_values'].to(torch.bfloat16)
                 for key in model_inputs:
                     if isinstance(model_inputs[key], torch.Tensor):
@@ -400,6 +405,8 @@ class InternVL2(lmms):
                 generation_config = dict(max_new_tokens=1024, do_sample=False, eos_token_id=eos_token_id)
                 responses = self.model.generate(**model_inputs, **generation_config)
                 response = self.processor.decode(responses[0])
+                end = time.time()
+                print("Model inference Time:", end - start)
             response = response.strip()
             print("Contexts:", contexts)
             print("Response:", response)
