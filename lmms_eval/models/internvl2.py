@@ -10,6 +10,8 @@ from PIL import Image
 from torchvision.transforms.functional import InterpolationMode
 from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer
+from mantis.models.intern_vl_25_8b import InternVLChatModel, InternVLChatConfig, InternVLChatProcessor, InternLM2Tokenizer
+
 
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
@@ -167,6 +169,7 @@ def split_model(model_name, num_layers=None):
 
     return device_map
 
+PER_IMAGE_NUM_TOKENS = 263 # 258 + 5
 
 @register_model("internvl2")
 class InternVL2(lmms):
@@ -178,13 +181,25 @@ class InternVL2(lmms):
         device_map: str = "cuda:0",
         batch_size: str = "1",
         num_frame: int = 32,
+        max_num_patches: int = 12,
+        max_frame_num_patches: int = 1,
         num_layers=None,
+        enable_shared_cross_attention=False,
+        enable_cross_attention=False,
+        local_attention_group_size=8,
+        top_k=100,
+        predict_type='key_norms_small',
+        adaptive_local_attention=False,
+        top_k_starting_layer=0,
+        prune_during_prefill_layer_idx=-1,
+        prune_for_query=False,
         **kwargs,
     ):
         super().__init__()
 
         self.path = pretrained
-        self.num_frame = num_frame
+        self.num_frame = num_frame if isinstance(num_frame, int) else eval(num_frame)
+        self.max_num_patches = max_num_patches if isinstance(max_num_patches, int) else eval(max_num_patches)
 
         batch_size = int(batch_size)
         assert batch_size == 1, f"Batch size should be 1 for InternVL2, but got {batch_size}."
@@ -203,9 +218,39 @@ class InternVL2(lmms):
         else:
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
+        local_attention_group_size = eval(local_attention_group_size) if isinstance(local_attention_group_size, str) else local_attention_group_size
+        local_attention_group_size = int(local_attention_group_size)
+        if local_attention_group_size > 0:
+            local_attention_group_size = PER_IMAGE_NUM_TOKENS * local_attention_group_size
+        config = InternVLChatConfig.from_pretrained(pretrained, 
+            enable_shared_cross_attention=enable_shared_cross_attention, enable_cross_attention=enable_cross_attention, 
+            local_attention_group_size=local_attention_group_size, adaptive_local_attention=adaptive_local_attention,
+            prune_for_query=prune_for_query)
+        config.llm_config.enable_cross_attention = config.enable_cross_attention
+        config.llm_config.local_attention_group_size = config.local_attention_group_size
+        config.llm_config.enable_shared_cross_attention = config.enable_shared_cross_attention
+        config.llm_config.adaptive_local_attention = config.adaptive_local_attention
+        config.llm_config.prune_for_query = config.prune_for_query
+        self._model = InternVLChatModel.from_pretrained(pretrained, config=config, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True, use_flash_attn=True, trust_remote_code=True, device_map=self.device_map).eval()
+        self._tokenizer = InternLM2Tokenizer.from_pretrained(self.path, trust_remote_code=True, device_map=device_map)
+        for i, decoder_layer in enumerate(self._model.language_model.model.layers):
+            if i >= top_k_starting_layer:
+                decoder_layer.attention.top_k = top_k
+            else:
+                decoder_layer.attention.top_k = -1
+            decoder_layer.attention.predict_type = predict_type
+            if i == prune_during_prefill_layer_idx:
+                decoder_layer.prune_during_prefill = True
 
-        self._model = AutoModel.from_pretrained(self.path, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True, trust_remote_code=True, device_map=self.device_map).eval()
-        self._tokenizer = AutoTokenizer.from_pretrained(self.path, trust_remote_code=True, device_map=self.device_map)
+        self.processor = InternVLChatProcessor(
+            self._tokenizer, enable_cross_attention=self._model.config.enable_cross_attention, video_num_segments=self.num_frame, \
+            max_num_patches=self.max_num_patches, max_frame_num_patches=max_frame_num_patches)
+        
+        self.model.img_context_token_id = self.processor.img_context_token_id
+        self.model.img_start_token_id = self.processor.img_start_token_id
+        self.model.img_end_token_id = self.processor.img_end_token_id
+        self.model.bos_token_id = self.processor.bos_token_id
+
 
         if accelerator.num_processes > 1:
             assert accelerator.distributed_type in [DistributedType.FSDP, DistributedType.MULTI_GPU, DistributedType.DEEPSPEED], "Unsupported distributed type provided. Only DDP and FSDP are supported."
@@ -302,26 +347,63 @@ class InternVL2(lmms):
 
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
             visuals = self.flatten(visuals)
+            from mantis.models.conversation import conv_templates
+
+
+            conv = conv_templates['internvl2_5'].copy()
+            
             if self.modality == "image":
                 if visuals:
-                    visuals = [load_image(visual).to(torch.bfloat16).cuda() for visual in visuals]
-                    pixel_values = torch.cat(visuals, dim=0)
-                    num_patches_list = [visual.size(0) for visual in visuals]
-                    image_tokens = ["<image>"] * len(visuals)
-                    image_tokens = " ".join(image_tokens)
-                    contexts = image_tokens + "\n" + contexts
+                    # visuals = [load_image(visual).to(torch.bfloat16).cuda() for visual in visuals]
+                    # pixel_values = torch.cat(visuals, dim=0)
+                    # num_patches_list = [visual.size(0) for visual in visuals]
+                    num_image_tokens_in_context = contexts.count("<image>")
+                    if num_image_tokens_in_context < len(visuals):
+                        image_tokens = ["<image>"] * (len(visuals) - num_image_tokens_in_context)
+                        image_tokens = " ".join(image_tokens)
+                        contexts = image_tokens + "\n" + contexts
                 else:
                     pixel_values = None
                     num_patches_list = None
-                response, history = self.model.chat(self.tokenizer, pixel_values, contexts, gen_kwargs, num_patches_list=num_patches_list, history=None, return_history=True)
+                    visuals = None
+                conv.append_message(conv.roles[0], contexts)
+                conv.append_message(conv.roles[1], None)
+                query = conv.get_prompt()
+                num_images_tokens = query.count("<image>")
+                query = " ".join(["<image>"] * num_images_tokens) + "\n" + query.replace("<image> ", " ").replace("<image>", "")
+                print("Query:", query)
+                model_inputs = self.processor(query, images=visuals)
+                model_inputs['pixel_values'] = model_inputs['pixel_values'].to(torch.bfloat16)
+                for key in model_inputs:
+                    if isinstance(model_inputs[key], torch.Tensor):
+                        model_inputs[key] = model_inputs[key].to(self.model.device)
+                eos_token_id = self.tokenizer.convert_tokens_to_ids(conv.sep.strip())
+                generation_config = dict(max_new_tokens=1024, do_sample=False, eos_token_id=eos_token_id)
+                responses = self.model.generate(**model_inputs, **generation_config)
+                response = self.processor.decode(responses[0], skip_special_tokens=True)
+                
             elif self.modality == "video":
                 assert len(visuals) == 1, f"Only one video is supported, but got {len(visuals)} videos."
                 video_path = visuals[0]
-                pixel_values, num_patches_list = load_video(video_path, num_segments=self.num_frame)
-                pixel_values = pixel_values.to(torch.bfloat16).cuda()
-                video_prefix = "".join([f"Frame{i+1}: <image>\n" for i in range(len(num_patches_list))])
-                question = video_prefix + contexts
-                response, history = self.model.chat(self.tokenizer, pixel_values, question, gen_kwargs, num_patches_list=num_patches_list, history=None, return_history=True)
+                video_tokens = ["<video>"]
+                # contexts = video_tokens + "\n" + contexts
+                conv.append_message(conv.roles[0], contexts)
+                conv.append_message(conv.roles[1], None)
+                query = conv.get_prompt()
+                query = " ".join(video_tokens) + "\n" + query
+                model_inputs = self.processor(query, videos=visuals)
+                model_inputs['pixel_values'] = model_inputs['pixel_values'].to(torch.bfloat16)
+                for key in model_inputs:
+                    if isinstance(model_inputs[key], torch.Tensor):
+                        model_inputs[key] = model_inputs[key].to(self.model.device)
+                eos_token_id = self.tokenizer.convert_tokens_to_ids(conv.sep.strip())
+                generation_config = dict(max_new_tokens=1024, do_sample=False, eos_token_id=eos_token_id)
+                responses = self.model.generate(**model_inputs, **generation_config)
+                response = self.processor.decode(responses[0])
+            response = response.strip()
+            print("Contexts:", contexts)
+            print("Response:", response)
+            # exit(1)
             res.append(response)
             pbar.update(1)
         pbar.close()
