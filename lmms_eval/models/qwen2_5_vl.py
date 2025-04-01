@@ -25,6 +25,8 @@ try:
     from qwen_vl_utils import process_vision_info
 except ImportError:
     eval_logger.warning("Failed to import qwen_vl_utils; Please install it via `pip install qwen-vl-utils`")
+    
+from lvu import LVUConfig, LVU
 
 
 @register_model("qwen2_5_vl")
@@ -48,6 +50,14 @@ class Qwen2_5_VL(lmms):
         use_custom_video_loader: Optional[bool] = False,
         fps: Optional[float] = None,  # Only applicable if use_custom_video_loader is True
         max_image_size: Optional[int] = None,  # Only applicable if use_custom_video_loader is True
+        local_attention_group_size=None,
+        top_k=None,
+        predict_type='key_norms_small',
+        adaptive_local_attention=False,
+        top_k_starting_layer=0,
+        prune_during_prefill_layer_idx=-1,
+        prune_for_query=True, # always true
+        use_lvu=True,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -110,6 +120,23 @@ class Qwen2_5_VL(lmms):
         else:
             self._rank = 0
             self._world_size = 1
+            
+        self.use_lvu = use_lvu
+        if use_lvu:
+            
+            self.lvu_config = LVUConfig(
+                model_name_or_path=pretrained,
+                model_type="qwen25_vl",
+                top_k_predict_type=predict_type,
+                top_k=top_k,
+                top_k_starting_layer=top_k_starting_layer,
+                adaptive_local_attention=adaptive_local_attention,
+                video_group_size=local_attention_group_size,
+                prefill_prune_starting_layer=prune_during_prefill_layer_idx,
+                fps=fps,
+                num_frames=max_num_frames,
+            )
+            self.lvu = LVU(self.lvu_config, model=self.model, processor=self.processor)
 
     @property
     def config(self):
@@ -239,7 +266,7 @@ class Qwen2_5_VL(lmms):
                             first_frame = vr[0].asnumpy()
                             height, width = first_frame.shape[:2]
                             # max_pixels = height * width
-                            message.append({"role": "user", "content": [{"type": "video", "video": visual, "max_pixels": 360 * 420}, {"type": "text", "text": context}]})
+                            message.append({"role": "user", "content": [{"type": "video", "video": visual, "max_pixels": 360 * 420, "nframes": self.max_num_frames}, {"type": "text", "text": context}]})
                     elif isinstance(visual, Image.Image):  # Single image
                         base64_image = visual.convert("RGB")
                         buffer = BytesIO()
@@ -264,50 +291,59 @@ class Qwen2_5_VL(lmms):
 
                 messages.append(message)
             # print("message")
+            if not self.use_lvu:
+                text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                image_inputs, video_inputs, video_kwargs = process_vision_info(messages, return_video_kwargs=True)
+                inputs = self.processor(
+                    text=text,
+                    images=image_inputs,
+                    videos=video_inputs,
+                    # fps=self.fps,
+                    padding=True,
+                    return_tensors="pt",
+                    **video_kwargs,
+                )
 
-            text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            image_inputs, video_inputs = process_vision_info(messages)
-            inputs = self.processor(
-                text=text,
-                images=image_inputs,
-                videos=video_inputs,
-                # fps=self.fps,
-                padding=True,
-                return_tensors="pt",
-            )
+                if self.device_map == "auto":
+                    inputs = inputs.to("cuda")
+                else:
+                    inputs = inputs.to(self.device)
 
-            if self.device_map == "auto":
-                inputs = inputs.to("cuda")
-            else:
-                inputs = inputs.to(self.device)
+                if "max_new_tokens" not in gen_kwargs:
+                    gen_kwargs["max_new_tokens"] = 4096
+                if "temperature" not in gen_kwargs:
+                    gen_kwargs["temperature"] = 0
+                if "top_p" not in gen_kwargs:
+                    gen_kwargs["top_p"] = None
+                if "num_beams" not in gen_kwargs:
+                    gen_kwargs["num_beams"] = 1
 
-            if "max_new_tokens" not in gen_kwargs:
-                gen_kwargs["max_new_tokens"] = 4096
-            if "temperature" not in gen_kwargs:
-                gen_kwargs["temperature"] = 0
-            if "top_p" not in gen_kwargs:
-                gen_kwargs["top_p"] = None
-            if "num_beams" not in gen_kwargs:
-                gen_kwargs["num_beams"] = 1
+                pad_token_id = self.tokenizer.pad_token_id
 
-            pad_token_id = self.tokenizer.pad_token_id
+                cont = self.model.generate(
+                    **inputs,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    pad_token_id=pad_token_id,
+                    do_sample=True if gen_kwargs["temperature"] > 0 else False,
+                    temperature=gen_kwargs["temperature"],
+                    top_p=gen_kwargs["top_p"],
+                    num_beams=gen_kwargs["num_beams"],
+                    max_new_tokens=4096,
+                    use_cache=self.use_cache,
+                )
 
-            cont = self.model.generate(
-                **inputs,
-                eos_token_id=self.tokenizer.eos_token_id,
-                pad_token_id=pad_token_id,
-                do_sample=True if gen_kwargs["temperature"] > 0 else False,
-                temperature=gen_kwargs["temperature"],
-                top_p=gen_kwargs["top_p"],
-                num_beams=gen_kwargs["num_beams"],
-                max_new_tokens=4096,
-                use_cache=self.use_cache,
-            )
-
-            generated_ids_trimmed = [out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, cont)]
-            answers = self.processor.batch_decode(generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False)
-            for i, ans in enumerate(answers):
-                answers[i] = ans
+                generated_ids_trimmed = [out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, cont)]
+                answers = self.processor.batch_decode(generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+                for i, ans in enumerate(answers):
+                    answers[i] = ans
+            
+            else:   
+                # print("lvu")
+                # print(messages)
+                # print(gen_kwargs)
+                assert self.batch_size == 1, "Batch size must be 1 for lvu"
+                answers = self.lvu.chat(messages, **gen_kwargs)
+                print(answers)
 
             for ans, context in zip(answers, contexts):
                 res.append(ans)
