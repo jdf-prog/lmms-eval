@@ -57,6 +57,9 @@ class Qwen2_5_VL(lmms):
         top_k_starting_layer=0,
         prune_during_prefill_layer_idx=-1,
         prune_for_query=True, # always true
+        top_k_decay_factor=None,
+        top_k_decay_type=None,
+        save_video_cache=False,
         use_lvu=True,
         **kwargs,
     ) -> None:
@@ -135,6 +138,9 @@ class Qwen2_5_VL(lmms):
                 prefill_prune_starting_layer=prune_during_prefill_layer_idx,
                 fps=fps,
                 num_frames=max_num_frames,
+                top_k_decay_factor=top_k_decay_factor,
+                top_k_decay_type=top_k_decay_type,
+                save_video_cache=save_video_cache,
             )
             self.lvu = LVU(self.lvu_config, model=self.model, processor=self.processor)
 
