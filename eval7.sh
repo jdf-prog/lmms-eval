@@ -1,11 +1,12 @@
+export DEEPCODEC_CORES=8
 export FORCE_QWENVL_VIDEO_READER='decord'
 adaptive_local_attention=True
 num_processes=8
 benchmark_name=longvideobench_val_v
-for num_frame in 32 64 128 256; do
+for num_frame in 1024; do
     for local_attention_group_size in 16; do
         for top_k in 720; do
-            for predict_type in query_attention_weights; do 
+            for predict_type in vector_norms query_attention_weights; do 
                 for top_k_starting_layer in 0; do
                     for prune_during_prefill_layer_idx in -1; do
                         echo "num_frame: $num_frame, local_attention_group_size: $local_attention_group_size, top_k: $top_k, predict_type: $predict_type, top_k_starting_layer: $top_k_starting_layer, prune_during_prefill_layer_idx: $prune_during_prefill_layer_idx"

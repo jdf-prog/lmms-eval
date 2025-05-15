@@ -124,7 +124,7 @@ class Qwen2_5_VL(lmms):
         else:
             self._rank = 0
             self._world_size = 1
-            
+
         self.use_lvu = use_lvu
         if use_lvu:
             
@@ -271,10 +271,6 @@ class Qwen2_5_VL(lmms):
                             image_contents = list(map(lambda x: f"data:image/jpeg;base64,{x}", visual))
                             message.append({"role": "user", "content": [{"type": "video", "video": image_contents}, {"type": "text", "text": context}]})
                         else:
-                            vr = decord.VideoReader(visual)
-                            first_frame = vr[0].asnumpy()
-                            height, width = first_frame.shape[:2]
-                            # max_pixels = height * width
                             video_message = {"type": "video", "video": visual}
                             if self.fps is not None:
                                 video_message["fps"] = self.fps

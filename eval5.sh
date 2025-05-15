@@ -5,7 +5,7 @@ num_processes=8
 benchmark_name=lvbench
 for num_frame in 1024; do
     for local_attention_group_size in 16; do
-        for top_k in -1; do
+        for top_k in 720 -1; do
             for predict_type in key_norms_small; do 
                 for top_k_starting_layer in 0; do
                     for prune_during_prefill_layer_idx in -1; do

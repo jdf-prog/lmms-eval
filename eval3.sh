@@ -1,7 +1,7 @@
 export DEEPCODEC_CORES=8
 export FORCE_QWENVL_VIDEO_READER='decord'
 adaptive_local_attention=True
-num_processes=8
+num_processes=4
 benchmark_name=longvideobench_val_v
 for num_frame in 1024; do
     for local_attention_group_size in 16; do
