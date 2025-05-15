@@ -52,6 +52,7 @@ class Qwen2_5_VL(lmms):
         max_image_size: Optional[int] = None,  # Only applicable if use_custom_video_loader is True
         local_attention_group_size=None,
         top_k=None,
+        top_p=None,
         predict_type='key_norms_small',
         adaptive_local_attention=False,
         top_k_starting_layer=0,
@@ -59,7 +60,7 @@ class Qwen2_5_VL(lmms):
         prune_for_query=True, # always true
         top_k_decay_factor=None,
         top_k_decay_type=None,
-        save_video_cache=False,
+        save_video_cache=True,
         use_lvu=True,
         **kwargs,
     ) -> None:
@@ -95,11 +96,11 @@ class Qwen2_5_VL(lmms):
             ).eval()
         else:
             self._model = Qwen2_5_VLForConditionalGeneration.from_pretrained(pretrained, torch_dtype="auto", device_map=self.device_map).eval()
-        self.processor = AutoProcessor.from_pretrained(pretrained, max_pixels=max_pixels, min_pixels=min_pixels)
         self.max_pixels = max_pixels
         self.min_pixels = min_pixels
         self.max_num_frames = max_num_frames
-        self.processor = AutoProcessor.from_pretrained(pretrained, max_pixels=max_pixels, min_pixels=min_pixels)
+        # self.processor = AutoProcessor.from_pretrained(pretrained, max_pixels=max_pixels, min_pixels=min_pixels)
+        self.processor = AutoProcessor.from_pretrained(pretrained)
         self._tokenizer = AutoTokenizer.from_pretrained(pretrained)
 
         self._config = self.model.config
@@ -130,8 +131,11 @@ class Qwen2_5_VL(lmms):
             self.lvu_config = LVUConfig(
                 model_name_or_path=pretrained,
                 model_type="qwen25_vl",
+                # model_type="qwen25_lvu",
+                # model_type="qwen25_lvu_interleaved",
                 top_k_predict_type=predict_type,
                 top_k=top_k,
+                top_p=float(top_p) if top_p is not None else None,
                 top_k_starting_layer=top_k_starting_layer,
                 adaptive_local_attention=adaptive_local_attention,
                 video_group_size=local_attention_group_size,
@@ -259,7 +263,6 @@ class Qwen2_5_VL(lmms):
                 #     context = context.replace("<image>", "")
 
                 message = [{"role": "system", "content": "You are a helpful assistant."}]
-
                 if len(visuals) > 0:
                     visual = visuals[i] if i < len(visuals) else None
                     if isinstance(visual, str) and visual.endswith((".mp4", ".avi", ".mov")):  # Video file
@@ -272,7 +275,15 @@ class Qwen2_5_VL(lmms):
                             first_frame = vr[0].asnumpy()
                             height, width = first_frame.shape[:2]
                             # max_pixels = height * width
-                            message.append({"role": "user", "content": [{"type": "video", "video": visual, "max_pixels": 360 * 420, "nframes": self.max_num_frames}, {"type": "text", "text": context}]})
+                            video_message = {"type": "video", "video": visual}
+                            if self.fps is not None:
+                                video_message["fps"] = self.fps
+                            elif self.max_num_frames is not None:
+                                video_message["nframes"] = self.max_num_frames
+                            else:
+                                raise ValueError("Either fps or max_num_frames must be set for video input.")
+                            video_message["max_pixels"] = 360 * 420
+                            message.append({"role": "user", "content": [video_message, {"type": "text", "text": context}]})
                     elif isinstance(visual, Image.Image):  # Single image
                         base64_image = visual.convert("RGB")
                         buffer = BytesIO()

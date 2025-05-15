@@ -8,7 +8,7 @@ accelerate launch --num_processes 4 --main_process_port 12345 -m lmms_eval \
     --output_path ./logs/
 
 
-num_processes=4
+num_processes=8
 for num_frame in 32; do
     for local_attention_group_size in 4 8 32; do
         for top_k in 100 -1; do
