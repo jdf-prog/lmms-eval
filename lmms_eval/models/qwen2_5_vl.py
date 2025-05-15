@@ -355,7 +355,11 @@ class Qwen2_5_VL(lmms):
                 # print(messages)
                 # print(gen_kwargs)
                 assert self.batch_size == 1, "Batch size must be 1 for lvu"
-                answers = self.lvu.chat(messages, **gen_kwargs)
+                try:
+                    answers = self.lvu.chat(messages, **gen_kwargs)
+                except Exception as e:
+                    eval_logger.error(f"Error in lvu chat: {e}")
+                    answers = [""] * len(messages)
                 print(answers)
 
             for ans, context in zip(answers, contexts):
