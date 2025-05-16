@@ -359,7 +359,7 @@ class Qwen2_5_VL(lmms):
                     answers = self.lvu.chat(messages, **gen_kwargs)
                 except Exception as e:
                     eval_logger.error(f"Error in lvu chat: {e}")
-                    answers = [""] * len(messages)
+                    answers = [""] * self.batch_size
                 print(answers)
 
             for ans, context in zip(answers, contexts):
